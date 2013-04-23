@@ -2,7 +2,6 @@ import os
 from socket import socket, AF_INET, SOCK_DGRAM
 
 cmdgw_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))
 
 class LocalSwiftInstance():
     def __init__(self, listen, cmdgw):
