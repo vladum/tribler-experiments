@@ -118,9 +118,11 @@ def set_up_files():
     silent_mkdir(TMPDIR)
     silent_mkdir(os.path.join(TMPDIR, 'seeder'))
     silent_mkdir(os.path.join(TMPDIR, 'leecher1'))
+    silent_mkdir(os.path.join(TMPDIR, 'leecher2'))
     silent_mkdir(LOGSDIR)
     silent_mkdir(os.path.join(LOGSDIR, 'seeder'))
     silent_mkdir(os.path.join(LOGSDIR, 'leecher1'))
+    silent_mkdir(os.path.join(LOGSDIR, 'leecher2'))
     silent_mkdir(PLOTDIR)
 
     dummy_file = os.path.join(TMPDIR, 'seeder', 'somefile')
@@ -172,11 +174,25 @@ if __name__ == '__main__':
     leecher1._cwd = os.path.abspath(os.path.join(TMPDIR, 'leecher1'))
     pfleecher1 = os.path.join(PLOTDIR, 'leecher1.plog')
     os.mkfifo(leecher1._stderr)
-    t = Thread(target=echo_leecher_stderr, args=(leecher1._stderr, pfleecher1, time.time()))
-    t.start()
-    leecher1.start_process()
+    
+    leecher2 = Leecher(sipport, '127.0.0.2:30001', roothash, 'leecher2')
+    leecher2._cwd = os.path.abspath(os.path.join(TMPDIR, 'leecher2'))
+    pfleecher2 = os.path.join(PLOTDIR, 'leecher2.plog')
+    os.mkfifo(leecher2._stderr)
+    
+    starttime = time.time()
+    t1 = Thread(target=echo_leecher_stderr, args=(leecher1._stderr, pfleecher1, starttime))
+    t2 = Thread(target=echo_leecher_stderr, args=(leecher2._stderr, pfleecher2, starttime))
 
-    t.join()
+    t1.start()
+    t2.start()
+    
+    leecher1.start_process()
+    leecher2.start_process()
+
+    t1.join()
+    t2.join()
     
     leecher1.process.kill()
+    leecher2.process.kill()
     seeder.process.kill()
