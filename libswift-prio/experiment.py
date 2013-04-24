@@ -1,7 +1,7 @@
 import os
 import shlex
 import time
-from socket import socket, AF_INET, SOCK_DGRAM
+from socket import socket, AF_INET, SOCK_STREAM
 from subprocess import call, Popen
 from threading import Thread
 
@@ -16,7 +16,6 @@ class LocalSwiftInstance():
         self.listen = listen
         self.filename = filename
         self._cwd = None
-        self.__cmdgw_sock = socket(AF_INET, SOCK_DGRAM)
         [self.__cmdgw_ip, self.__cmdgw_port] = cmdgw.split(':')
         self._make_dirs()
     
@@ -28,12 +27,13 @@ class LocalSwiftInstance():
     def start_process(self):
         cmd = [
             os.path.abspath(SWIFTBINARY),
+            '-c', self.__cmdgw_ip + ':' + str(self.__cmdgw_port),
             '-l', self.listen, 
             '-p', 
             '-n', os.path.abspath(self._dir),
-            '-f', os.path.abspath(self.filename),
-            #'-B',
+            '-d', os.path.abspath(self._dir),
             '-u', '1024', #uprate
+            #'-m',
         ]
         print 'launching:', ' '.join(cmd)
         fstdout = open(self._stdout, 'w')
@@ -46,45 +46,62 @@ class LocalSwiftInstance():
         )
         print 'process started: name =', self.name,
         print ' pid =', self.process.pid
+        time.sleep(2)
+        self.__cmdgw_sock = socket(AF_INET, SOCK_STREAM)
+        self.__cmdgw_sock.connect((self.__cmdgw_ip, int(self.__cmdgw_port)))
         
     def get_roothash_blocking(self):
-        f = open(self._stdout, 'r')
+        while True:
+            try:
+                f = open(os.path.join(self._dir, 'somefile.mbinmap'), 'r')
+                break
+            except IOError as _:
+                print 'retrying to open .mbinmap file'
+                time.sleep(1)
+                continue
+        time.sleep(2)
         while True:
             line = f.readline()
             if line == '':
                 # end of file
                 f.seek(0, 0)
                 continue
-            r = line.split(':')
-            if r[0] == 'Root hash':
-                return r[1][1:-1]
+            r = line.split(' ')
+            if r[0] == 'root':
+                return r[2][:-1]
     
     def send_peer_weigths(self, weights):
-        msg = ''.join([
+        msg = ' '.join([
             ip + ':' + str(port) + ':' + str(weight) 
             for (ip, port, weight) in weights
         ])
-        self.__cmdgw_sock.sendto(
-            'RECIPROCITY PEERWEIGHTS ' + msg,
-            (self.__cmdgw_ip, int(self.__cmdgw_port)))
+        msg = 'RECIPROCITY PEERWEIGHTS ' + msg + '\r\n'
+        print 'sending:', msg, 'to:', (self.__cmdgw_ip, int(self.__cmdgw_port))
+        self.__cmdgw_sock.send(msg)
+        
+    def send_start(self):
+        msg = 'START \r\n'
+        self.__cmdgw_sock.send(msg)
 
 class Seeder(LocalSwiftInstance):
     pass
 
 class Leecher(LocalSwiftInstance):
-    def __init__(self, tracker, cmdgw, roothash, name):
+    def __init__(self, tracker, cmdgw, roothash, name, listenport):
         LocalSwiftInstance.__init__(self, tracker, cmdgw, roothash)
         self.name = name
         # listen and filename is also tracker and roothash for leechers
         self.roothash = roothash
         self.tracker = tracker
+        self.listenport = listenport
         self._make_dirs()
     
     def start_process(self):
         cmd = [
             os.path.abspath(SWIFTBINARY),
             '-t', self.tracker, 
-            '-p', 
+            '-l', self.listenport,
+            '-p',
             '-n', os.path.abspath(self._dir),
             '-h', self.roothash,
             #'-B',
@@ -151,6 +168,8 @@ def plog_stderr(filename, plotfile, starttime, isseeder=False):
             dwload = line.split(' ')[1][:-1].split('.')[0]
             print >>pf, str(int(time.time() - starttime)), progress, upload, dwload
             pf.flush()
+        if isseeder:
+            print line[:-1]
 
         if stop:
             break
@@ -171,15 +190,16 @@ if __name__ == '__main__':
     s.start()
     
     seeder.start_process()
+    #seeder.send_start()
     roothash = seeder.get_roothash_blocking()
     print 'got roothash from seeder:', roothash
     
-    leecher1 = Leecher(sipport, '127.0.0.2:20001', roothash, 'leecher1')
+    leecher1 = Leecher(sipport, '127.0.0.2:20001', roothash, 'leecher1', '20002')
     leecher1._cwd = os.path.abspath(os.path.join(TMPDIR, 'leecher1'))
     pfleecher1 = os.path.join(PLOTDIR, 'leecher1.plog')
     os.mkfifo(leecher1._stderr)
     
-    leecher2 = Leecher(sipport, '127.0.0.2:30001', roothash, 'leecher2')
+    leecher2 = Leecher(sipport, '127.0.0.2:30001', roothash, 'leecher2', '30002')
     leecher2._cwd = os.path.abspath(os.path.join(TMPDIR, 'leecher2'))
     pfleecher2 = os.path.join(PLOTDIR, 'leecher2.plog')
     os.mkfifo(leecher2._stderr)
@@ -188,6 +208,8 @@ if __name__ == '__main__':
     t2 = Thread(target=plog_stderr, args=(leecher2._stderr, pfleecher2, starttime))
     t1.start()
     t2.start()
+    
+    seeder.send_peer_weigths([('127.0.0.1', 30002, 10), ('127.0.0.1', 20002, 1)])
     
     leecher1.start_process()
     leecher2.start_process()
