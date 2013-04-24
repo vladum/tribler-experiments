@@ -3,6 +3,7 @@ import shlex
 import time
 from socket import socket, AF_INET, SOCK_DGRAM
 from subprocess import call, Popen
+from threading import Thread
 
 TMPDIR = './tmp'
 LOGSDIR = os.path.join(TMPDIR, 'logs')
@@ -16,6 +17,7 @@ class LocalSwiftInstance():
         self._cwd = None
         self.__cmdgw_sock = socket(AF_INET, SOCK_DGRAM)
         [self.__cmdgw_ip, self.__cmdgw_port] = cmdgw.split(':')
+        self._make_dirs()
     
     def _make_dirs(self):
         self._dir = os.path.join(TMPDIR, self.name)
@@ -23,7 +25,6 @@ class LocalSwiftInstance():
         self._stdout = os.path.join(LOGSDIR, self.name, 'stdout.log')
     
     def start_process(self):
-        self._make_dirs()
         cmd = [
             os.path.abspath(SWIFTBINARY),
             '-l', self.listen, 
@@ -75,9 +76,9 @@ class Leecher(LocalSwiftInstance):
         # listen and filename is also tracker and roothash for leechers
         self.roothash = roothash
         self.tracker = tracker
-        
-    def start_process(self):
         self._make_dirs()
+    
+    def start_process(self):
         cmd = [
             os.path.abspath(SWIFTBINARY),
             '-t', self.tracker, 
@@ -126,6 +127,17 @@ def set_up_files():
 
     return dummy_file
 
+def echo_leecher_stderr(filename):
+    f = open(filename, 'r')
+    while True:
+        line = f.readline()
+        if line == '':
+            break
+        if line.lower().startswith('done'):
+            print line[:-1]
+    f.close()
+    print 'finished!'
+
 if __name__ == '__main__':
     dummy_file = set_up_files()
 
@@ -138,14 +150,10 @@ if __name__ == '__main__':
 
     leecher1 = Leecher(sipport, '127.0.0.2:20001', roothash, 'leecher1')
     leecher1._cwd = os.path.abspath(os.path.join(TMPDIR, 'leecher1'))
+    os.mkfifo(leecher1._stderr)
+    t = Thread(target=echo_leecher_stderr, args=(leecher1._stderr,)).start()
     leecher1.start_process()
 
-    time.sleep(2)
-
-    f = open(leecher1._stderr, 'r')
-    while True:
-        line = f.readline()
-        if line == '':
-            f.seek(0, 0)
-        if line.lower().startswith('done'):
-            print line
+    time.sleep(5)
+    
+    leecher1.process.kill()
