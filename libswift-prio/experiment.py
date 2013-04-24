@@ -1,5 +1,6 @@
 import os
 import shlex
+import time
 from socket import socket, AF_INET, SOCK_DGRAM
 from subprocess import call, Popen
 
@@ -12,33 +13,48 @@ class LocalSwiftInstance():
         self.name = 'seeder'
         self.listen = listen
         self.filename = filename
-        self.__cwd = None
+        self._cwd = None
         self.__cmdgw_sock = socket(AF_INET, SOCK_DGRAM)
         [self.__cmdgw_ip, self.__cmdgw_port] = cmdgw.split(':')
-        self.__dir = os.path.join(TMPDIR, self.name)
-        self.__stderr = os.path.join(LOGSDIR, self.name, 'stderr.log')
-        self.__stdout = os.path.join(LOGSDIR, self.name, 'stdout.log')
+    
+    def _make_dirs(self):
+        self._dir = os.path.join(TMPDIR, self.name)
+        self._stderr = os.path.join(LOGSDIR, self.name, 'stderr.log')
+        self._stdout = os.path.join(LOGSDIR, self.name, 'stdout.log')
     
     def start_process(self):
+        self._make_dirs()
         cmd = [
-            SWIFTBINARY, 
+            os.path.abspath(SWIFTBINARY),
             '-l', self.listen, 
             '-p', 
-            '-n', self.__dir, 
-            '-f', self.filename,
+            '-n', os.path.abspath(self._dir),
+            '-f', os.path.abspath(self.filename),
             '-B'
         ]
-        print 'launching:', ''.join(cmd)
-        fstdout = open(self.__stdout, 'w')
-        fstderr = open(self.__stderr, 'w')
+        print 'launching:', ' '.join(cmd)
+        fstdout = open(self._stdout, 'w')
+        fstderr = open(self._stderr, 'w')
         self.process = Popen(
             args=cmd,
             stdout=fstdout,
             stderr=fstderr,
-            cwd=self.__cwd
+            cwd=self._cwd
         )
         print 'process started: name =', self.name,
         print ' pid =', self.process.pid
+        
+    def get_roothash_blocking(self):
+        f = open(self._stdout, 'r')
+        while True:
+            line = f.readline()
+            if line == '':
+                # end of file
+                f.seek(0, 0)
+                continue
+            r = line.split(':')
+            if r[0] == 'Root hash':
+                return r[1][1:-1]
     
     def send_peer_weigths(self, weights):
         msg = ''.join([
@@ -49,33 +65,87 @@ class LocalSwiftInstance():
             'RECIPROCITY PEERWEIGHTS ' + msg,
             (self.__cmdgw_ip, int(self.__cmdgw_port)))
 
-def set_up_files():
+class Seeder(LocalSwiftInstance):
+    pass
+
+class Leecher(LocalSwiftInstance):
+    def __init__(self, tracker, cmdgw, roothash, name):
+        LocalSwiftInstance.__init__(self, tracker, cmdgw, roothash)
+        self.name = name
+        # listen and filename is also tracker and roothash for leechers
+        self.roothash = roothash
+        self.tracker = tracker
+        
+    def start_process(self):
+        self._make_dirs()
+        cmd = [
+            os.path.abspath(SWIFTBINARY),
+            '-t', self.tracker, 
+            '-p', 
+            '-n', os.path.abspath(self._dir),
+            '-h', self.roothash,
+            '-B',
+            '-y', '1024' # downrate in KiB
+        ]
+        print 'launching:', ' '.join(cmd)
+        fstdout = open(self._stdout, 'w')
+        fstderr = open(self._stderr, 'w')
+        try:
+            self.process = Popen(
+                args=cmd,
+                stdout=fstdout,
+                stderr=fstderr,
+                cwd=self._cwd
+            )
+        except OSError as e:
+            print self._cwd
+            raise e
+        print 'process started: name =', self.name,
+        print ' pid =', self.process.pid
+
+def silent_mkdir(d):
     try:
-        os.mkdir(TMPDIR)
-        os.mkdir(os.path.join(TMPDIR, 'seeder'))
-        os.mkdir(LOGSDIR)
-        os.mkdir(os.path.join(LOGSDIR, 'seeder'))
+        os.mkdir(d)
     except OSError as _:
         # Do nothing if already exists.
         pass
+
+def set_up_files():
+    # TODO(vladum): Move some of these to the objects.
+    silent_mkdir(TMPDIR)
+    silent_mkdir(os.path.join(TMPDIR, 'seeder'))
+    silent_mkdir(os.path.join(TMPDIR, 'leecher1'))
+    silent_mkdir(LOGSDIR)
+    silent_mkdir(os.path.join(LOGSDIR, 'seeder'))
+    silent_mkdir(os.path.join(LOGSDIR, 'leecher1'))
+
     dummy_file = os.path.join(TMPDIR, 'seeder', 'somefile')
     # 1GiB file
     call(['dd', 'if=/dev/urandom', 'of=' + dummy_file, 'bs=16M',
           'count=1']) # TODO(vladum): count=64
+
     return dummy_file
 
 if __name__ == '__main__':
     dummy_file = set_up_files()
 
-    seeder = LocalSwiftInstance(
-        '127.0.0.1:10000',
-        '127.0.0.1:10001',
-        dummy_file
-    )
+    sipport = '127.0.0.1:10000'
+    seeder = Seeder(sipport, '127.0.0.1:10001', dummy_file)
     seeder.start_process()
-    
-    # TODO(vladum): Get roothash from stdout.
-    
-    #leecher1 = LocalSwiftInstance('127.0.0.2:20000', '127.0.0.2:20001', seeder.roothash)
-    #leecher2 = LocalSwiftInstance('127.0.0.3:30000', '127.0.0.3:30001', seeder.roothash)    
 
+    roothash = seeder.get_roothash_blocking()
+    print 'got roothash from seeder:', roothash
+
+    leecher1 = Leecher(sipport, '127.0.0.2:20001', roothash, 'leecher1')
+    leecher1._cwd = os.path.abspath(os.path.join(TMPDIR, 'leecher1'))
+    leecher1.start_process()
+
+    time.sleep(2)
+
+    f = open(leecher1._stderr, 'r')
+    while True:
+        line = f.readline()
+        if line == '':
+            f.seek(0, 0)
+        if line.lower().startswith('done'):
+            print line
