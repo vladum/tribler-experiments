@@ -128,48 +128,52 @@ def set_up_files():
     dummy_file = os.path.join(TMPDIR, 'seeder', 'somefile')
     # 1GiB file
     call(['dd', 'if=/dev/urandom', 'of=' + dummy_file, 'bs=16M',
-          'count=10']) # TODO(vladum): count=64
+          'count=3']) # TODO(vladum): count=64
 
     return dummy_file
 
-def echo_leecher_stderr(filename, plotfile, starttime):
+def plog_stderr(filename, plotfile, starttime, isseeder=False):
     pf = open(plotfile, 'w')
     f = open(filename, 'r')
     stop = False
     while True:
         line = f.readline()
         if line == '':
-            # something happened with the seeder
-            print 'something bad happened'
+            print 'swift process might be dead'
             break
-        print line[:-1]
         if line.startswith('done') or line.startswith('DONE'):
-            if line.startswith('DONE'):
+            if line.startswith('DONE') and not isseeder:
                 stop = True
             progress = line.split(' ')[1]
         elif line.startswith('upload'):
-            upload = line.split(' ')[1][:-1]
+            upload = line.split(' ')[1][:-1].split('.')[0]
         elif line.startswith('dwload'):
-            dwload = line.split(' ')[1][:-1]
-            print >>pf, time.time() - starttime, progress, upload, dwload
+            dwload = line.split(' ')[1][:-1].split('.')[0]
+            print >>pf, str(int(time.time() - starttime)), progress, upload, dwload
             pf.flush()
 
         if stop:
             break
     f.close()
     pf.close()
-    print 'leecher finished!'
+    print 'peer finished! plog in file:', plotfile
 
 if __name__ == '__main__':
     dummy_file = set_up_files()
 
     sipport = '127.0.0.1:10000'
     seeder = Seeder(sipport, '127.0.0.1:10001', dummy_file)
+    pfseeder = os.path.join(PLOTDIR, 'seeder.plog')
+    os.mkfifo(seeder._stderr)
+    
+    starttime = time.time()
+    s = Thread(target=plog_stderr, args=(seeder._stderr, pfseeder, starttime, True))
+    s.start()
+    
     seeder.start_process()
-
     roothash = seeder.get_roothash_blocking()
     print 'got roothash from seeder:', roothash
-
+    
     leecher1 = Leecher(sipport, '127.0.0.2:20001', roothash, 'leecher1')
     leecher1._cwd = os.path.abspath(os.path.join(TMPDIR, 'leecher1'))
     pfleecher1 = os.path.join(PLOTDIR, 'leecher1.plog')
@@ -180,10 +184,8 @@ if __name__ == '__main__':
     pfleecher2 = os.path.join(PLOTDIR, 'leecher2.plog')
     os.mkfifo(leecher2._stderr)
     
-    starttime = time.time()
-    t1 = Thread(target=echo_leecher_stderr, args=(leecher1._stderr, pfleecher1, starttime))
-    t2 = Thread(target=echo_leecher_stderr, args=(leecher2._stderr, pfleecher2, starttime))
-
+    t1 = Thread(target=plog_stderr, args=(leecher1._stderr, pfleecher1, starttime))
+    t2 = Thread(target=plog_stderr, args=(leecher2._stderr, pfleecher2, starttime))
     t1.start()
     t2.start()
     
