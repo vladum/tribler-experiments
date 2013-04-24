@@ -7,6 +7,7 @@ from threading import Thread
 
 TMPDIR = './tmp'
 LOGSDIR = os.path.join(TMPDIR, 'logs')
+PLOTDIR = os.path.join(TMPDIR, 'plots')
 SWIFTBINARY = './swift'
 
 class LocalSwiftInstance():
@@ -31,7 +32,8 @@ class LocalSwiftInstance():
             '-p', 
             '-n', os.path.abspath(self._dir),
             '-f', os.path.abspath(self.filename),
-            '-B'
+            #'-B',
+            '-u', '1024', #uprate
         ]
         print 'launching:', ' '.join(cmd)
         fstdout = open(self._stdout, 'w')
@@ -85,7 +87,7 @@ class Leecher(LocalSwiftInstance):
             '-p', 
             '-n', os.path.abspath(self._dir),
             '-h', self.roothash,
-            '-B',
+            #'-B',
             '-y', '1024' # downrate in KiB
         ]
         print 'launching:', ' '.join(cmd)
@@ -119,24 +121,42 @@ def set_up_files():
     silent_mkdir(LOGSDIR)
     silent_mkdir(os.path.join(LOGSDIR, 'seeder'))
     silent_mkdir(os.path.join(LOGSDIR, 'leecher1'))
+    silent_mkdir(PLOTDIR)
 
     dummy_file = os.path.join(TMPDIR, 'seeder', 'somefile')
     # 1GiB file
     call(['dd', 'if=/dev/urandom', 'of=' + dummy_file, 'bs=16M',
-          'count=1']) # TODO(vladum): count=64
+          'count=10']) # TODO(vladum): count=64
 
     return dummy_file
 
-def echo_leecher_stderr(filename):
+def echo_leecher_stderr(filename, plotfile, starttime):
+    pf = open(plotfile, 'w')
     f = open(filename, 'r')
+    stop = False
     while True:
         line = f.readline()
         if line == '':
+            # something happened with the seeder
+            print 'something bad happened'
             break
-        if line.lower().startswith('done'):
-            print line[:-1]
+        print line[:-1]
+        if line.startswith('done') or line.startswith('DONE'):
+            if line.startswith('DONE'):
+                stop = True
+            progress = line.split(' ')[1]
+        elif line.startswith('upload'):
+            upload = line.split(' ')[1][:-1]
+        elif line.startswith('dwload'):
+            dwload = line.split(' ')[1][:-1]
+            print >>pf, time.time() - starttime, progress, upload, dwload
+            pf.flush()
+
+        if stop:
+            break
     f.close()
-    print 'finished!'
+    pf.close()
+    print 'leecher finished!'
 
 if __name__ == '__main__':
     dummy_file = set_up_files()
@@ -150,10 +170,13 @@ if __name__ == '__main__':
 
     leecher1 = Leecher(sipport, '127.0.0.2:20001', roothash, 'leecher1')
     leecher1._cwd = os.path.abspath(os.path.join(TMPDIR, 'leecher1'))
+    pfleecher1 = os.path.join(PLOTDIR, 'leecher1.plog')
     os.mkfifo(leecher1._stderr)
-    t = Thread(target=echo_leecher_stderr, args=(leecher1._stderr,)).start()
+    t = Thread(target=echo_leecher_stderr, args=(leecher1._stderr, pfleecher1, time.time()))
+    t.start()
     leecher1.start_process()
 
-    time.sleep(5)
+    t.join()
     
     leecher1.process.kill()
+    seeder.process.kill()
