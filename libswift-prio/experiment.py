@@ -209,7 +209,7 @@ if __name__ == '__main__':
     t1.start()
     t2.start()
     
-    seeder.send_peer_weigths([('127.0.0.1', 30002, 10), ('127.0.0.1', 20002, 1)])
+    #seeder.send_peer_weigths([('127.0.0.1', 30002, 10), ('127.0.0.1', 20002, 1)])
     
     leecher1.start_process()
     leecher2.start_process()
