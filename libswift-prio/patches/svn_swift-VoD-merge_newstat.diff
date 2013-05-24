@@ -1,0 +1,83 @@
+Index: transfer.cpp
+===================================================================
+--- transfer.cpp	(revision 32426)
++++ transfer.cpp	(working copy)
+@@ -73,7 +73,7 @@
+     init_time_ = Channel::Time();
+     cur_speed_[DDIR_UPLOAD] = MovingAverageSpeed();
+     cur_speed_[DDIR_DOWNLOAD] = MovingAverageSpeed();
+-    max_speed_[DDIR_UPLOAD] = DBL_MAX;
++    max_speed_[DDIR_UPLOAD] = 1024 * 1024; // 1 MiB/s
+     max_speed_[DDIR_DOWNLOAD] = DBL_MAX;
+ 
+     // SAFECLOSE
+Index: sendrecv.cpp
+===================================================================
+--- sendrecv.cpp	(revision 32426)
++++ sendrecv.cpp	(working copy)
+@@ -32,7 +32,7 @@
+  * we send HINTs for 2 chunks at the moment. This constant can be used to
+  * get greater granularity. Set to 0 for original behaviour.
+  */
+-#define HINT_GRANULARITY	0 // chunks
++#define HINT_GRANULARITY	2 // chunks
+ 
+ /** Arno, 2012-03-16: Swift can now tunnel data from CMDGW over UDP to
+  * CMDGW at another swift instance. This is the default channel ID on UDP
+Index: swift.cpp
+===================================================================
+--- swift.cpp	(revision 32426)
++++ swift.cpp	(working copy)
+@@ -17,7 +17,7 @@
+ 
+ 
+ // Local constants
+-#define RESCAN_DIR_INTERVAL	30 // seconds
++#define RESCAN_DIR_INTERVAL	5 // seconds
+ 
+ 
+ // Local prototypes
+@@ -487,24 +487,34 @@
+ 
+ void ReportCallback(int fd, short event, void *arg) {
+ 	// Called every second to print/calc some stats
++    // Arno, 2012-05-24: Why-oh-why, update NOW
++	Channel::Time();
+ 
++    if (report_progress && single_fd  < 0) {
++        // Only for seeder.
++        fprintf(stderr,
++            "SEED %s %lli dgram %lli raw bytes up %lli bytes up, " \
++            "%lli dgram %lli raw bytes down %lli bytes down\n",
++            tintstr(),
++            Channel::global_dgrams_up, Channel::global_raw_bytes_up, Channel::global_bytes_up,
++            Channel::global_dgrams_down, Channel::global_raw_bytes_down, Channel::global_bytes_down );
++    }
++
+ 	if (single_fd  >= 0)
+ 	{
++        FileTransfer *ft = FileTransfer::file(single_fd);
++        
+ 		if (report_progress) {
+ 			fprintf(stderr,
+-				"%s %lli of %lli (seq %lli) %lli dgram %lli bytes up, "	\
+-				"%lli dgram %lli bytes down\n",
+-				IsComplete(single_fd ) ? "DONE" : "done",
++				"%s %s %lli of %lli (seq %lli) %lli dgram %lli bytes up, "	\
++				"%lli dgram %lli bytes down %lf upload %lf dwload\n",
++				IsComplete(single_fd ) ? "DONE" : "done", tintstr(),
+ 				Complete(single_fd), Size(single_fd), SeqComplete(single_fd),
+ 				Channel::global_dgrams_up, Channel::global_raw_bytes_up,
+-				Channel::global_dgrams_down, Channel::global_raw_bytes_down );
++				Channel::global_dgrams_down, Channel::global_raw_bytes_down,
++				ft->GetCurrentSpeed(DDIR_UPLOAD), ft->GetCurrentSpeed(DDIR_DOWNLOAD));
+ 		}
+ 
+-        FileTransfer *ft = FileTransfer::file(single_fd);
+-        if (report_progress) { // TODO: move up
+-        	fprintf(stderr,"upload %lf\n",ft->GetCurrentSpeed(DDIR_UPLOAD));
+-        	fprintf(stderr,"dwload %lf\n",ft->GetCurrentSpeed(DDIR_DOWNLOAD));
+-        }
+         // Update speed measurements such that they decrease when DL/UL stops
+         // Always
+     	ft->OnRecvData(0);
