@@ -2,10 +2,11 @@
 
 python -c "import experiment; experiment.parse_peer_logs()"
 
-cp $1/*.plog ./
+cp $TMPDIR/plots/*.plog ./
 
 DATE=$(date -Iminutes | tr "+:" "-")
-gnuplot < plot1.gnuplot > plot1-$DATE.png
+GPTITLE="Original WFQ (1S 2L same prio) $SWIFTBINARY" \
+	gnuplot < plot1.gnuplot > plot1-$DATE.png
 echo "plot1-$DATE.png"
 eog plot1-$DATE.png
 

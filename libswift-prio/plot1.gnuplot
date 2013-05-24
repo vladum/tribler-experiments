@@ -1,6 +1,8 @@
+TITLE=system("echo $GPTITLE")
+
 set datafile separator " "
 set terminal png size 1300,600
-set title "Original WFQ (1S 2L same prio)"
+set title TITLE
 set ylabel "Speed (B/s)"
 set y2label "Progress (%)"
 set xlabel "Time (s)"

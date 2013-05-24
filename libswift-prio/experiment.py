@@ -8,8 +8,15 @@ from socket import socket, AF_INET, SOCK_STREAM
 from subprocess import call, Popen
 from threading import Thread
 
-TMPDIR = './tmp-VoD-7'
-SWIFTBINARY = '/home/vlad/work/thesis/swift-VoD-merge/swift'
+try:
+    TMPDIR = os.environ['TMPDIR']
+except KeyError:
+    TMPDIR = './tmp'
+
+try:
+    SWIFTBINARY = os.environ['SWIFTBINARY']
+except KeyError:
+    SWIFTBINARY = '/home/vlad/work/thesis/swift-VoD-merge/swift'
 
 LOGSDIR = os.path.join(TMPDIR, 'logs')
 PLOTDIR = os.path.join(TMPDIR, 'plots')
