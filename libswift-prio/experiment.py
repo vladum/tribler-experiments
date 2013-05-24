@@ -277,6 +277,7 @@ if __name__ == '__main__':
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
+    print 'Running for 230s... You can safely kill me with Ctrl+C...'
     time.sleep(230)
 
     leecher1.process.kill()
