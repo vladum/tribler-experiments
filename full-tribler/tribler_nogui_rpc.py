@@ -10,13 +10,24 @@ from traceback import print_exc
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
-TRIBLERPATH = os.environ['TRIBLERPATH']
+# prepare ROOTDIR
+TIME = time.strftime('%Y-%m-%d-%H-%M')
+if not os.environ['ROOTDIR']:
+    ROOTDIR = os.path.join('/local', os.environ['USER'], TIME)
+else:
+    ROOTDIR = os.path.abspath(os.environ['ROOTDIR'])
+if not os.path.exists(ROOTDIR):
+    os.mkdir(ROOTDIR)
+OLDCWD = os.getcwd()
+os.chdir(ROOTDIR)
+
+logging.config.fileConfig(os.path.join(OLDCWD, 'logger.conf'))
+
+TRIBLERPATH = os.path.join(OLDCWD, os.environ['TRIBLERPATH'])
 sys.path += [TRIBLERPATH]
 
 from Tribler.Core.API import *
 from Tribler.Core.__init__ import version, report_email
-
-logging.config.fileConfig('logger.conf')
 
 def download_state_callback(ds):
     d = ds.get_download()
@@ -31,15 +42,21 @@ def download_state_callback(ds):
     return (1.0, False)
 
 class NoGuiTribler:
-    def __init__(self, port):
+    def __init__(self, id, swiftport):
+        self.peerid = id
         self.sscfg = SessionStartupConfig()
-        self.statedir = tempfile.mkdtemp()
+        self.statedir = os.path.join(ROOTDIR, 'state' + self.peerid)
         self.sscfg.set_swift_path(os.path.join(TRIBLERPATH, 'swift'))
         self.sscfg.set_swift_proc(True)
         self.sscfg.set_state_dir(self.statedir)
-        self.sscfg.set_listen_port(port)
-        self.sscfg.set_swift_tunnel_listen_port(port)
+        
+        self.sscfg.set_swift_tunnel_listen_port(swiftport)
+        self.sscfg.sessconfig['dispersy-tunnel-over-swift'] = True
+
+        self.sscfg.set_libtorrent(False)
         self.sscfg.set_megacache(False)
+        self.sscfg.set_torrent_collecting(False)
+        self.sscfg.set_mainline_dht(False)
         self.sscfg.set_dispersy(True)
 
     def start(self):
@@ -48,6 +65,7 @@ class NoGuiTribler:
 
     def seed(self, filename):
         sdef = SwiftDef()
+        # TODO: change these
         sdef.set_tracker("127.0.0.1:%d" % self.s.get_swift_dht_listen_port())
         sdef.add_content(filename)
         sdef.finalize(self.s.get_swift_path(), destdir=destdir)
@@ -67,8 +85,8 @@ class NoGuiTribler:
         sdef = SwiftDef.load_from_url(url)
 
         dscfg = DownloadStartupConfig()
-        dscfg.set_dest_dir('.')
-        dscfg.set_swift_meta_dir('.')
+        dscfg.set_dest_dir(os.path.join(ROOTDIR, 'dwload' + self.peerid))
+        dscfg.set_swift_meta_dir(os.path.join(ROOTDIR, 'dwload' + self.peerid))
         d = self.s.start_download(sdef, dscfg)
         d.set_state_callback(download_state_callback, getpeerlist=[])
 
@@ -81,17 +99,21 @@ class NoGuiTribler:
         time.sleep(3)
         shutil.rmtree(self.statedir)
 
+RPCPORT = 8000
+SWIFTPORT = 10001
+PEERID = '0'
+
 def main():
     if len(sys.argv) < 2:
         print 'Usage:', sys.argv[0], '<rpcport>'
         exit(1)
 
     server = SimpleXMLRPCServer(
-        ("0.0.0.0", 8000),
+        ("0.0.0.0", RPCPORT),
         requestHandler=SimpleXMLRPCRequestHandler)
     server.register_introspection_functions()
 
-    t = NoGuiTribler(int(sys.argv[1]))
+    t = NoGuiTribler(PEERID, SWIFTPORT)
     t.start()
 
     server.register_instance(t)
