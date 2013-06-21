@@ -6,6 +6,7 @@ import random
 import os
 import getopt
 import logging.config
+from subprocess import call
 from traceback import print_exc
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
@@ -56,6 +57,10 @@ class NoGuiTribler:
         self.sscfg.set_torrent_collecting(False)
         self.sscfg.set_mainline_dht(False)
         self.sscfg.set_dispersy(True)
+
+    def generate_file(self, size):
+        call(['dd', 'if=/dev/urandom', 'of=' + ROOTDIR + '/file', 'bs=1M', 'count=' + str(size)])
+        return 'deadbeef12deadbeef12deadbeef12deadbeef12'
 
     def start(self):
         self.s = Session(self.sscfg)
