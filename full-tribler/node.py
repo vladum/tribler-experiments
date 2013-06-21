@@ -13,10 +13,10 @@ from tribler_nogui_rpc import NoGuiTribler
 
 # prepare ROOTDIR
 UNIQUE = sys.argv[3] + '-' + sys.argv[1]
-if not os.environ['ROOTDIR']:
-    ROOTDIR = os.path.join('/local', os.environ['USER'], UNIQUE)
-else:
+try:
     ROOTDIR = os.path.abspath(os.environ['ROOTDIR'])
+except KeyError:
+    ROOTDIR = os.path.join('/local', os.environ['USER'], UNIQUE)
 if not os.path.exists(ROOTDIR):
     os.mkdir(ROOTDIR)
 OLDCWD = os.getcwd()
