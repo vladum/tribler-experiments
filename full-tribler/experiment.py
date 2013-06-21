@@ -3,7 +3,7 @@
 import time
 
 def swift_uri(peer, roothash):
-    return 'tswift://' + peer['ip'] + ':' + peer['swiftport'] + '/' + roothash
+    return 'tswift://' + peer['ip'] + ':' + str(peer['swiftport']) + '/' + roothash
 
 def generate_file(peer, size=0):
     '''Generate a file of <size> MB.'''

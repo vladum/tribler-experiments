@@ -35,7 +35,7 @@ def start_tribler_nogui():
         requestHandler=SimpleXMLRPCRequestHandler)
     server.register_introspection_functions()
 
-    t = NoGuiTribler(SETTINGS['id'], SETTINGS['swiftport'])
+    t = NoGuiTribler(SETTINGS['peerid'], SETTINGS['swiftport'])
     t.start()
 
     server.register_instance(t)
