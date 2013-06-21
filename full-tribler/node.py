@@ -5,17 +5,36 @@ import sys
 import zmq
 import random
 import time
-from subprocess import call
+from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
 from das4 import *
 from experiment import run
+from tribler_nogui_rpc import NoGuiTribler
+
+# prepare ROOTDIR
+UNIQUE = sys.argv[3] + '-' + sys.argv[1]
+if not os.environ['ROOTDIR']:
+    ROOTDIR = os.path.join('/local', os.environ['USER'], UNIQUE)
+else:
+    ROOTDIR = os.path.abspath(os.environ['ROOTDIR'])
+if not os.path.exists(ROOTDIR):
+    os.mkdir(ROOTDIR)
+OLDCWD = os.getcwd()
+os.chdir(ROOTDIR)
+
+logging.config.fileConfig(os.path.join(OLDCWD, 'logger.conf'))
+
+TRIBLERPATH = os.path.join(OLDCWD, os.environ['TRIBLERPATH'])
+sys.path += [TRIBLERPATH]
+
+from Tribler.Core.API import *
 
 STAGE_MASTER_PORT = '5556'
 SETTINGS = {
     'peerid': sys.argv[1], # we'll use the node id set by panda
     'ip': get_current_node_ip(),
-    'swiftport': '1234',
-    'rpcport': '2345',
+    'swiftport': 10001,
+    'rpcport': 31337,
     # TODO: Others? Dispersy etc?
 }
 
@@ -29,6 +48,19 @@ def report_settings():
 
 def start_tribler_nogui():
     print 'Starting Tribler NOGUI.'
+    server = SimpleXMLRPCServer(
+        ("0.0.0.0", SETTINGS['rpcport']),
+        requestHandler=SimpleXMLRPCRequestHandler)
+    server.register_introspection_functions()
+
+    t = NoGuiTribler(SETTINGS['id'], SETTINGS['swiftport'])
+    t.start()
+
+    server.register_instance(t)
+
+    server.serve_forever()
+    time.sleep(2)
+    t.shutdown()
 
 def stage_master_main():
     context = zmq.Context()

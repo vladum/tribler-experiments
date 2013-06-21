@@ -7,8 +7,7 @@ import os
 import getopt
 import logging.config
 from traceback import print_exc
-from SimpleXMLRPCServer import SimpleXMLRPCServer
-from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
+from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
 # prepare ROOTDIR
 TIME = time.strftime('%Y-%m-%d-%H-%M')
@@ -27,7 +26,6 @@ TRIBLERPATH = os.path.join(OLDCWD, os.environ['TRIBLERPATH'])
 sys.path += [TRIBLERPATH]
 
 from Tribler.Core.API import *
-from Tribler.Core.__init__ import version, report_email
 
 def download_state_callback(ds):
     d = ds.get_download()
@@ -104,10 +102,6 @@ SWIFTPORT = 10001
 PEERID = '0'
 
 def main():
-    if len(sys.argv) < 2:
-        print 'Usage:', sys.argv[0], '<rpcport>'
-        exit(1)
-
     server = SimpleXMLRPCServer(
         ("0.0.0.0", RPCPORT),
         requestHandler=SimpleXMLRPCRequestHandler)
