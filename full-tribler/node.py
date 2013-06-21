@@ -31,7 +31,7 @@ def report_settings():
 def start_tribler_nogui():
     print 'Starting Tribler NOGUI.'
     server = SimpleXMLRPCServer(
-        ("0.0.0.0", SETTINGS['rpcport']),
+        (SETTINGS['ip'], SETTINGS['rpcport']),
         requestHandler=SimpleXMLRPCRequestHandler)
     server.register_introspection_functions()
 
