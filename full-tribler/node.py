@@ -11,24 +11,6 @@ from das4 import *
 from experiment import run
 from tribler_nogui_rpc import NoGuiTribler
 
-# prepare ROOTDIR
-UNIQUE = sys.argv[3] + '-' + sys.argv[1]
-try:
-    ROOTDIR = os.path.abspath(os.environ['ROOTDIR'])
-except KeyError:
-    ROOTDIR = os.path.join('/local', os.environ['USER'], UNIQUE)
-if not os.path.exists(ROOTDIR):
-    os.mkdir(ROOTDIR)
-OLDCWD = os.getcwd()
-os.chdir(ROOTDIR)
-
-logging.config.fileConfig(os.path.join(OLDCWD, 'logger.conf'))
-
-TRIBLERPATH = os.path.join(OLDCWD, os.environ['TRIBLERPATH'])
-sys.path += [TRIBLERPATH]
-
-from Tribler.Core.API import *
-
 STAGE_MASTER_PORT = '5556'
 SETTINGS = {
     'peerid': sys.argv[1], # we'll use the node id set by panda

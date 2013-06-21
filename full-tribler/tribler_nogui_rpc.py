@@ -16,7 +16,7 @@ try:
 except KeyError:
     ROOTDIR = os.path.join('/local', os.environ['USER'], UNIQUE)
 if not os.path.exists(ROOTDIR):
-    os.mkdir(ROOTDIR)
+    os.makedirs(ROOTDIR)
 OLDCWD = os.getcwd()
 os.chdir(ROOTDIR)
 
