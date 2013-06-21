@@ -9,7 +9,7 @@ def swift_uri(peer, roothash):
 def generate_file(peer, size=0):
     '''Generate a file of <size> MB.'''
     print 'Generating file on peer', peer
-    s = xmlrpclib.ServerProxy(peer['ip'] + str(peer['rpcport']))
+    s = xmlrpclib.ServerProxy('http://' + peer['ip'] + str(peer['rpcport']))
     return s.generate_file(size)
 
 def start_download(peer, uri):
