@@ -10,11 +10,11 @@ from traceback import print_exc
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
 # prepare ROOTDIR
-TIME = time.strftime('%Y-%m-%d-%H-%M')
-if not os.environ['ROOTDIR']:
-    ROOTDIR = os.path.join('/local', os.environ['USER'], TIME)
-else:
+UNIQUE = sys.argv[3] + '-' + sys.argv[1]
+try:
     ROOTDIR = os.path.abspath(os.environ['ROOTDIR'])
+except KeyError:
+    ROOTDIR = os.path.join('/local', os.environ['USER'], UNIQUE)
 if not os.path.exists(ROOTDIR):
     os.mkdir(ROOTDIR)
 OLDCWD = os.getcwd()
