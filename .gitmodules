@@ -1,0 +1,3 @@
+[submodule "full-tribler-gumby/gumby"]
+	path = full-tribler-gumby/gumby
+	url = git@github.com:vladum/gumby.git
