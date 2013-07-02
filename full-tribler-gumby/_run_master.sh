@@ -2,5 +2,5 @@
 
 PEERCOUNT=$1
 
-echo "Starting config server..." > ./output/master.log
-python gumby/scripts/config_server.py $PEERCOUNT 10 2>&1 >> ./output/master.log
+echo "run_master.sh: Starting config server..." > ./output/master.log
+gumby/scripts/config_server.py $PEERCOUNT 120 2>&1 >> ./output/master.log
