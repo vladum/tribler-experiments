@@ -28,6 +28,9 @@ cp -R ./gumby ./$EXPERIMENT_NAME/ 2>/dev/null
 
 # Code that will be run on the DAS4 nodes
 cp ./node.py ./$EXPERIMENT_NAME/node.py 2>/dev/null
+cp ./node.sh ./$EXPERIMENT_NAME/node.sh 2>/dev/null
+cp ./tribler_nogui.py ./$EXPERIMENT_NAME/tribler_nogui.py 2>/dev/null
+cp ./logger.conf ./$EXPERIMENT_NAME/logger.conf 2>/dev/null
 
 cat > ./$EXPERIMENT_NAME/$EXPERIMENT_NAME.config << CONFIGFILE
 workspace_dir = "$EXPERIMENT_DIR"
