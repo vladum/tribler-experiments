@@ -21,22 +21,22 @@ def start_experiment(peerid, swiftport):
         os.environ["USER"],
         os.environ["UNIQUE"] + "-" + str(peerid)
     )
-    print peerid, ": Starting TriblerNoGui."
+    print str(peerid) + ": Starting TriblerNoGui."
     
     t = TriblerNoGui(str(peerid), swiftport, rootdir)
     t.start()
-    print peerid, ": TriblerNoGui running on port", swiftport
+    print str(peerid) + ": TriblerNoGui running on port " + str(swiftport)
 
     start_scenario(t)
 
 def prepare_experiment(config):
-    print config['my']['id'], ": Configuration received."
+    print config['my']['id'] + ": Configuration received."
 
     myid = int(config["my"]["id"])
     port = int(config["my"]["port"])
     start_timestamp = int(config["my"]["start_timestamp"])
     delay = start_timestamp - time()
-    print config['my']['id'], ": TriblerNoGui will start in", delay, "seconds."    
+    print config['my']['id'] + ": TriblerNoGui will start in", delay, "seconds."    
     reactor.callLater(delay, start_experiment, myid, port)
 
 def main():
