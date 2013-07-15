@@ -2,18 +2,20 @@ import sys
 import os
 import logging
 from time import time, sleep
-from twisted.internet import reactor, task
+from twisted.internet import reactor
 
 from gumby.config import ConfigClientFactory, get_config_server_endpoint
+from gumby.scenario import ScenarioRunner
 
 from tribler_nogui import TriblerNoGui
 
 logging.config.fileConfig("logger.conf")
 
 def start_scenario(t):
-    # TODO: start parsing scenario
     print "Starting scenario."
-    sleep(10000)
+    st = ScenarioRunner(os.path.join(os.environ["PROJECTROOT"], os.environ["SCENARIO_FILE"]), int(t.peerid))
+    st.register(t.test_method)
+    st.run()
 
 def start_experiment(peerid, swiftport):
     rootdir = os.path.join(
@@ -36,7 +38,8 @@ def prepare_experiment(config):
     port = int(config["my"]["port"])
     start_timestamp = int(config["my"]["start_timestamp"])
     delay = start_timestamp - time()
-    print config['my']['id'] + ": TriblerNoGui will start in", delay, "seconds."    
+    print config['my']['id'] + ": TriblerNoGui will start in", delay, "seconds."
+    # TODO(vladum): Do not do this here. The scenario should handle this.
     reactor.callLater(delay, start_experiment, myid, port)
 
 def main():

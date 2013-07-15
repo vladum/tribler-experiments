@@ -31,6 +31,7 @@ cp ./node.py ./$EXPERIMENT_NAME/node.py 2>/dev/null
 cp ./node.sh ./$EXPERIMENT_NAME/node.sh 2>/dev/null
 cp ./tribler_nogui.py ./$EXPERIMENT_NAME/tribler_nogui.py 2>/dev/null
 cp ./logger.conf ./$EXPERIMENT_NAME/logger.conf 2>/dev/null
+cp ./scenario ./$EXPERIMENT_NAME/scenario 2>/dev/null
 
 cat > ./$EXPERIMENT_NAME/$EXPERIMENT_NAME.config << CONFIGFILE
 workspace_dir = "$EXPERIMENT_DIR"
@@ -51,6 +52,8 @@ remote_instance_cmd = "./submit_job.sh $PEERCOUNT" # submit actual job to DAS4
 
 use_local_venv = False # doesn't matter, nothing is run locally
 use_local_systemtap = False # doesn't matter, nothing is run locally
+
+scenario_file = "scenario" # relative to PROJECTROOT
 CONFIGFILE
 
 python gumby/run.py ./$EXPERIMENT_NAME/$EXPERIMENT_NAME.config

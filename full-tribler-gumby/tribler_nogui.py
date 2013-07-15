@@ -112,3 +112,6 @@ class TriblerNoGui:
         d.set_state_callback(download_state_callback, getpeerlist=[])
 
         # TODO: Add leeching download to some list.
+
+    def test_method(self, param="bau"):
+        print "Test method called at", time.time(), "by peer", self.peerid, "with param", param
