@@ -62,7 +62,7 @@ class TriblerNoGui:
             os.path.join(TRIBLERPATH, 'Tribler', 'SwiftEngine', 'swift')
         )
         self.sscfg.set_swift_tunnel_listen_port(swiftport)
-        self.sscfg.sessconfig['dispersy-tunnel-over-swift'] = True
+        self.sscfg.set_dispersy_tunnel_over_swift(True)
 
         # we only play with swift and dispersy in this experiment
         self.sscfg.set_swift_proc(True)
