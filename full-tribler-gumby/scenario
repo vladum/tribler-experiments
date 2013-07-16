@@ -1,3 +1,3 @@
-+0:0 test_method
-+0:4 test_method haha
-+0:8 test_method
++0:0 test_method before-generation
++0:4 generate_file
++0:8 test_method after-generation

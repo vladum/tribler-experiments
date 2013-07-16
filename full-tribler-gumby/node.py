@@ -13,8 +13,12 @@ logging.config.fileConfig("logger.conf")
 
 def start_scenario(t):
     print "Starting scenario."
-    st = ScenarioRunner(os.path.join(os.environ["PROJECTROOT"], os.environ["SCENARIO_FILE"]), int(t.peerid))
+    st = ScenarioRunner(
+        os.path.join(os.environ["PROJECTROOT"], os.environ["SCENARIO_FILE"]),
+        int(t.peerid)
+    )
     st.register(t.test_method)
+    st.register(t.generate_file)
     st.run()
 
 def start_experiment(peerid, swiftport):
@@ -23,7 +27,9 @@ def start_experiment(peerid, swiftport):
         os.environ["USER"],
         os.environ["UNIQUE"] + "-" + str(peerid)
     )
-    print str(peerid) + ": Starting TriblerNoGui."
+    with open("/etc/HOSTNAME") as f:
+        node_hostname = f.read()
+    print str(peerid) + ": Starting TriblerNoGui on", node_hostname
     
     t = TriblerNoGui(str(peerid), swiftport, rootdir)
     t.start()

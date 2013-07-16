@@ -32,6 +32,7 @@ cp ./node.sh ./$EXPERIMENT_NAME/node.sh 2>/dev/null
 cp ./tribler_nogui.py ./$EXPERIMENT_NAME/tribler_nogui.py 2>/dev/null
 cp ./logger.conf ./$EXPERIMENT_NAME/logger.conf 2>/dev/null
 cp ./scenario ./$EXPERIMENT_NAME/scenario 2>/dev/null
+cp -R ./util ./$EXPERIMENT_NAME/util 2>/dev/null
 
 cat > ./$EXPERIMENT_NAME/$EXPERIMENT_NAME.config << CONFIGFILE
 workspace_dir = "$EXPERIMENT_DIR"
@@ -44,14 +45,8 @@ config_server_cmd = "./run_master.sh $PEERCOUNT"
 tracker_run_remote = True
 tracker_port = 7788
 
-local_setup_cmd = ":" # no local setup needed
 remote_setup_cmd = "das4_setup.sh" # installs libraries and stuff on DAS4
-
-local_instance_cmd = ":" # no local instance
 remote_instance_cmd = "./submit_job.sh $PEERCOUNT" # submit actual job to DAS4
-
-use_local_venv = False # doesn't matter, nothing is run locally
-use_local_systemtap = False # doesn't matter, nothing is run locally
 
 scenario_file = "scenario" # relative to PROJECTROOT
 CONFIGFILE
