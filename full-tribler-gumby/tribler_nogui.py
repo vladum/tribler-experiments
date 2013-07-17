@@ -343,6 +343,21 @@ class TriblerNoGui:
         self.s = Session(self.sscfg)
         self.s.start()
 
+        # load Dispersy BarterCommunity
+        def define_barter_community():
+            from Tribler.community.bartercast3.community import BarterCommunity
+
+            if swift_process:
+                dispersy.define_auto_load(BarterCommunity,
+                                          (swift_process,),
+                                          load=True)
+
+            print >> sys.stderr, "tribler: Dispersy BarterCommunity is ready"
+
+        swift_process = self.s.get_swift_proc() and self.s.get_swift_process()
+        dispersy = self.s.get_dispersy_instance()
+        dispersy.callback.call(define_barter_community)
+
     def shutdown(self):
         self.s.shutdown()
         time.sleep(3)
