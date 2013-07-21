@@ -31,6 +31,7 @@ cp ./node.py ./$EXPERIMENT_NAME/node.py 2>/dev/null
 cp ./node.sh ./$EXPERIMENT_NAME/node.sh 2>/dev/null
 cp ./tribler_nogui.py ./$EXPERIMENT_NAME/tribler_nogui.py 2>/dev/null
 cp ./logger.conf ./$EXPERIMENT_NAME/logger.conf 2>/dev/null
+cp ./logger.conf.tracker ./$EXPERIMENT_NAME/logger.conf.tracker 2>/dev/null
 cp ./scenario ./$EXPERIMENT_NAME/scenario 2>/dev/null
 cp -R ./util ./$EXPERIMENT_NAME/util 2>/dev/null
 
