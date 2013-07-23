@@ -35,6 +35,7 @@ cp ./scenario ./$EXPERIMENT_NAME/scenario 2>/dev/null
 cp -R ./util ./$EXPERIMENT_NAME/util 2>/dev/null
 
 cat > ./$EXPERIMENT_NAME/$EXPERIMENT_NAME.config << CONFIGFILE
+virtualenv_dir = "/home/$DAS4USER/venv"
 workspace_dir = "$EXPERIMENT_DIR"
 head_nodes = "$DAS4USER@fs3.das4.tudelft.nl",
 
