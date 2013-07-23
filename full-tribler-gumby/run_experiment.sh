@@ -14,14 +14,13 @@ EXPERIMENT_DIR="`pwd`/FullTriblerNoGui"
 mkdir ./$EXPERIMENT_NAME 2>/dev/null
 
 # Dispersy tracker that will be run on the head node
-cp ./_run_tracker.sh ./$EXPERIMENT_NAME/run_tracker.sh 2>/dev/null
+cp ./run_tracker.sh ./$EXPERIMENT_NAME/ 2>/dev/null
 
-# The experiment master. Will also run on the head node. For this experiment
-# this is just the config server.
-cp ./_run_master.sh ./$EXPERIMENT_NAME/run_master.sh 2>/dev/null
+# Experiment config server to be run on the head node.
+cp ./run_config_server.sh ./$EXPERIMENT_NAME/ 2>/dev/null
 
 # The actual job submission script that will reserve and run instances on DAS4.
-cp ./_submit_job.sh ./$EXPERIMENT_NAME/submit_job.sh 2>/dev/null
+cp ./submit_job.sh ./$EXPERIMENT_NAME/ 2>/dev/null
 
 # Copy the whole gumby to the workspace
 cp -R ./gumby ./$EXPERIMENT_NAME/ 2>/dev/null
@@ -40,7 +39,7 @@ workspace_dir = "$EXPERIMENT_DIR"
 head_nodes = "$DAS4USER@fs3.das4.tudelft.nl",
 
 tracker_cmd = "./run_tracker.sh"
-config_server_cmd = "./run_master.sh $PEERCOUNT"
+config_server_cmd = "./run_config_server.sh $PEERCOUNT"
 
 # Tracker running on the first head node.
 tracker_run_remote = True
