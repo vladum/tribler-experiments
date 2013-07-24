@@ -27,6 +27,16 @@ def start_experiment(peerid, swiftport):
         os.environ["USER"],
         os.environ["UNIQUE"] + "-" + str(peerid)
     )
+    if not os.path.exists(rootdir):
+        os.makedirs(rootdir)
+    copyfile(
+        os.path.join(
+            "/home/",
+            os.environ["USER"],
+            os.environ["BOOTSTRAPTRIBLER_FILE"]
+        ),
+        os.path.join(rootdir, "bootstraptribler.txt")
+    )
     with open("/etc/HOSTNAME") as f:
         node_hostname = f.read()
     print str(peerid) + ": Starting TriblerNoGui on", node_hostname
