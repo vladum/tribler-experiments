@@ -7,7 +7,9 @@ from shutil import rmtree
 
 import logging
 import logging.config
-logging.config.fileConfig("logger.conf")
+logger_conf = os.path.abspath(os.environ.get("LOGGER_CONF", "logger.conf"))
+print "Logger using configuration file: " + logger_conf
+logging.config.fileConfig(logger_conf)
 logger = logging.getLogger(__name__)
 
 BOOTSTRAPTRIBLER_FILE = "bootstraptribler.txt"

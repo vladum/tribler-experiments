@@ -1,15 +1,20 @@
 [loggers]
-keys=root
+keys=root,dispersy
 
 [handlers]
-keys=debugging,default,file
+keys=debugging,default
 
 [formatters]
 keys=debugging,default
 
 [logger_root]
 level=NOTSET
-handlers=file
+handlers=default
+
+[logger_dispersy]
+level=CRITICAL
+handlers=default
+qualname=Tribler.dispersy
 
 [handler_default]
 class=StreamHandler
@@ -26,12 +31,6 @@ class=StreamHandler
 level=NOTSET
 formatter=default
 args=(sys.stderr,)
-
-[handler_file]
-class=FileHandler
-level=NOTSET
-formatter=debugging
-args=('tracker.log', 'a')
 
 [formatter_debugging]
 format=%(levelname)-7s %(created).2f %(module)15s:%(lineno)-4d  %(name)s %(message)s

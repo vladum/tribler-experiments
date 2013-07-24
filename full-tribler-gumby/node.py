@@ -1,6 +1,6 @@
 import sys
 import os
-import logging
+from shutil import copyfile
 from time import time, sleep
 from twisted.internet import reactor
 
@@ -9,7 +9,12 @@ from gumby.scenario import ScenarioRunner
 
 from tribler_nogui import TriblerNoGui
 
-logging.config.fileConfig("logger.conf")
+import logging
+import logging.config
+logger_conf = os.path.abspath(os.environ.get("LOGGER_CONF", "logger.conf"))
+print "Logger using configuration file: " + logger_conf
+logging.config.fileConfig(logger_conf)
+logger = logging.getLogger(__name__)
 
 def start_scenario(t):
     print "Starting scenario."

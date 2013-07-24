@@ -1,3 +1,4 @@
 #!/bin/bash
 
-python node.py $@
+pwd
+LOGGER_CONF=logger.conf.node python node.py $@
