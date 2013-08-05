@@ -8,6 +8,7 @@ import getopt
 import logging.config
 from subprocess import call
 from traceback import print_exc
+from collections import OrderedDict
 
 # TODO: Use abs.
 TRIBLERPATH = os.path.join(
@@ -23,7 +24,7 @@ from util.gen_files import generate_file
 # We use predefined patterns and file sizes because we need to know which hashes
 # to download. Peers will choose one of these. You can use util/gen_files.py to
 # make more patterns. Sizes are expressed in bytes. Chuncksize was 1024.
-PATTERNS = {
+PATTERNS = OrderedDict(sorted({
     "209715200-00" : "161b2709445830f79d71ae72acffc5b8676061a2",
     "209715200-01" : "04bce4b980f66b041084d15d1198aa54f719534b",
     "209715200-02" : "6280cd598cdd2c4d60b022f30cb9dc0a664aef82",
@@ -280,22 +281,37 @@ PATTERNS = {
     "209715200-fd" : "7ecb98892f0cd61d63ad221baea90056cda377af",
     "209715200-fe" : "a3f87613c51bf67aa56229fef73782daeb5db921",
     "209715200-ff" : "c0c50c6c588f082b665b64c56ae7a6a53798a91d"
-}
+}.items()))
 
-def download_state_callback(ds):
+def download_state_callback(peerid, ds):
     """
     Logs download progress while the experiment if running.
     """
     d = ds.get_download()
-    print >> sys.stderr, '%s %s %5.2f%% %s up %8.2fKB/s down %8.2fKB/s' % \
-        (d.get_def().get_name(),
+    print >> sys.stderr, '%s %s %s %5.2f%% %s up %8.2fKB/s down %8.2fKB/s' % \
+        (peerid,
+        d.get_def().get_name(),
         dlstatus_strings[ds.get_status()],
         ds.get_progress() * 100,
         ds.get_error(),
         ds.get_current_speed(UPLOAD),
         ds.get_current_speed(DOWNLOAD))
 
-    return (1.0, False)
+    return (5.0, False)
+
+def sesscb_states_callback(dslist):
+    for ds in dslist:
+        d = ds.get_download()
+        print >> sys.stderr, '%s %s %5.2f%% %s up %8.2fKB/s down %8.2fKB/s total:%8.2f' % \
+            (d.get_def().get_name(),
+            dlstatus_strings[ds.get_status()],
+            ds.get_progress() * 100,
+            ds.get_error(),
+            ds.get_current_speed(UPLOAD),
+            ds.get_current_speed(DOWNLOAD),
+            ds.get_total_transferred(DOWNLOAD))
+    #print >> sys.stderr, dslist
+    return (5.0, [True])
 
 class TriblerNoGui:
     """
@@ -307,11 +323,13 @@ class TriblerNoGui:
         * seed
         * leech
     """
-    def __init__(self, id, swiftport, rootdir):
+    def __init__(self, id, swiftport, rootdir, config=None):
         """
         This only prepares the SessionStartupConfig object. Call start() to
         actually start Tribler.
         """
+        self.config = config
+
         self.rootdir = rootdir
         if not os.path.exists(self.rootdir):
             os.makedirs(self.rootdir)
@@ -319,6 +337,7 @@ class TriblerNoGui:
 
         self.peerid = id
         self.filesdir = os.path.join(self.rootdir, 'files' + self.peerid)
+        #self.filesdir = os.path.join(self.rootdir, 'state' + self.peerid, "collected_torrent_files")
         os.makedirs(self.filesdir)
         self.statedir = os.path.join(self.rootdir, 'state' + self.peerid)
 
@@ -339,9 +358,15 @@ class TriblerNoGui:
         self.sscfg.set_torrent_collecting(False)
         self.sscfg.set_mainline_dht(False)
 
+    def _get_peer_endpoint(self, peerid):
+        endpoint = self.config["others"][int(peerid) - 1]
+        return "%s:%s" % (endpoint["ip"], endpoint["port"])
+
     def start(self):
         self.s = Session(self.sscfg)
         self.s.start()
+
+        #self.s.set_download_states_callback(sesscb_states_callback)
 
         # load Dispersy BarterCommunity
         def define_barter_community():
@@ -366,38 +391,51 @@ class TriblerNoGui:
     def generate_file(self):
         (sizepattern, roothash) = PATTERNS.items()[int(self.peerid)]
         size, pattern = sizepattern.split("-")
+        filename = os.path.join(self.filesdir, "file_" + roothash)
         generate_file(
             int(size),
             pattern.decode("hex"),
-            os.path.join(self.filesdir, "file_" + roothash)
+            filename
         )
-        print "Peer", self.peerid, "generated file with hash", roothash,\
-              "(size=" + size + ", pattern=" + pattern +")" 
+        logging.info(
+            "Peer %s generated file: hash=%s size=%s pattern=%s name=%s" % 
+            (self.peerid, roothash, size, pattern, filename)
+        )
 
     def seed(self, filename):
+        print >> sys.stderr, self.peerid, self.s.get_swift_path(), filename
         sdef = SwiftDef()
         # TODO: change these
-        sdef.set_tracker("127.0.0.1:%d" % self.s.get_swift_dht_listen_port())
-        sdef.add_content(filename)
-        sdef.finalize(self.s.get_swift_path(), destdir=destdir)
+        # using the torrent collection swift instance (not the 9999 port one)
+        sdef.set_tracker(self._get_peer_endpoint(self.peerid))
+        sdef.add_content(os.path.abspath(os.path.join(self.filesdir, filename)))
+        sdef.finalize(self.s.get_swift_path(), destdir=self.filesdir)
 
         dscfg = DownloadStartupConfig()
-        dscfg.set_dest_dir(filename)
-        dscfg.set_swift_meta_dir(destdir)
+        dscfg.set_dest_dir(os.path.join(self.filesdir, filename))
+        dscfg.set_swift_meta_dir(self.filesdir)
+        
 
         d = self.s.start_download(sdef, dscfg)
-        d.set_state_callback(download_state_callback, getpeerlist=[])
+        #d.set_moreinfo_stats(True)
+        download_state_callback_lambda = lambda x: download_state_callback(self.peerid, x)
+        d.set_state_callback(download_state_callback_lambda, getpeerlist=[True])
 
         # TODO: Add seeding download to some list.
 
-    def leech(self, url):
+    def leech(self, peerid, roothash):
+        url = 'tswift://%s/%s' % (self._get_peer_endpoint(peerid), roothash)
         sdef = SwiftDef.load_from_url(url)
 
         dscfg = DownloadStartupConfig()
         dscfg.set_dest_dir(os.path.join(self.rootdir, 'dwload' + self.peerid))
         dscfg.set_swift_meta_dir(os.path.join(self.rootdir, 'dwload' + self.peerid))
+
+
         d = self.s.start_download(sdef, dscfg)
-        d.set_state_callback(download_state_callback, getpeerlist=[])
+        #d.set_moreinfo_stats(True)
+        download_state_callback_lambda = lambda x: download_state_callback(self.peerid, x)
+        d.set_state_callback(download_state_callback_lambda, getpeerlist=[])
 
         # TODO: Add leeching download to some list.
 
