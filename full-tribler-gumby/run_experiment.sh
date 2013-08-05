@@ -23,7 +23,8 @@ rsync -avz --delete --exclude "$(basename $EXPERIMENT_DIR)" \
 cat > $EXPERIMENT_DIR/$EXPERIMENT_NAME.config << CONFIGFILE
 virtualenv_dir = "/home/$DAS4USER/venv"
 workspace_dir = "$EXPERIMENT_DIR"
-head_nodes = "$DAS4USER@fs3.das4.tudelft.nl",
+#head_nodes = "$DAS4USER@fs3.das4.tudelft.nl",
+head_nodes = "$DAS4USER@fs0.das4.cs.vu.nl",
 
 tracker_cmd = "./run_tracker.sh"
 config_server_cmd = "./run_config_server.sh $PEERCOUNT"
