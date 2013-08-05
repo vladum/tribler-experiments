@@ -48,7 +48,7 @@ def start_experiment(peerid, swiftport, config):
         node_hostname = f.read()
     print str(peerid) + ": Starting TriblerNoGui on", node_hostname
     
-    t = TriblerNoGui(str(peerid), swiftport, rootdir)
+    t = TriblerNoGui(str(peerid), swiftport, rootdir, config)
     t.start()
     print str(peerid) + ": TriblerNoGui running on port " + str(swiftport)
 
@@ -63,7 +63,7 @@ def prepare_experiment(config):
     delay = start_timestamp - time()
     print config['my']['id'] + ": TriblerNoGui will start in", delay, "seconds."
     # TODO(vladum): Do not do this here. The scenario should handle this.
-    reactor.callLater(delay, start_experiment, myid, port)
+    reactor.callLater(delay, start_experiment, myid, port, config)
 
 def main():
     factory = ConfigClientFactory()
