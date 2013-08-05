@@ -24,9 +24,11 @@ def start_scenario(t):
     )
     st.register(t.test_method)
     st.register(t.generate_file)
+    st.register(t.seed)
+    st.register(t.leech)
     st.run()
 
-def start_experiment(peerid, swiftport):
+def start_experiment(peerid, swiftport, config):
     rootdir = os.path.join(
         "/local/",
         os.environ["USER"],
