@@ -1,5 +1,5 @@
 [loggers]
-keys=root,dispersy
+keys=root,dispersy,dispersystats,bartercommunity,dispersydetailedstats
 
 [handlers]
 keys=debugging,default
@@ -15,6 +15,21 @@ handlers=default
 level=CRITICAL
 handlers=default
 qualname=Tribler.dispersy
+
+[logger_dispersystats]
+level=CRITICAL
+handlers=default
+qualname=dispersy-stats-candidates
+
+[logger_dispersydetailedstats]
+level=CRITICAL
+handlers=default
+qualname=dispersy-stats-detailed-candidates
+
+[logger_bartercommunity]
+level=CRITICAL
+handlers=default
+qualname=Tribler.community.bartercast3
 
 [handler_default]
 class=StreamHandler
@@ -35,4 +50,3 @@ args=(sys.stderr,)
 [formatter_debugging]
 format=%(levelname)-7s %(created).2f %(module)15s:%(lineno)-4d  %(name)s %(message)s
 class=logging.Formatter
-
