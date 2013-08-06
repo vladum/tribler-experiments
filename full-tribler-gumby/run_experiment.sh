@@ -11,9 +11,9 @@ DAS4USER=$1
 DAS4FS=$2
 PEERCOUNT=$3
 
-${DAS4USER:?"Please give DAS4 username as the 1st argument."}
-${DAS4FS:?"Please give DAS4 front server host as the 2nd argument."}
-${PEERCOUNT:?"How many peers should I start? (3rd argument)"}
+: ${DAS4USER:?"Please give DAS4 username as the 1st argument."}
+: ${DAS4FS:?"Please give DAS4 front server host as the 2nd argument."}
+: ${PEERCOUNT:?"How many peers should I start? (3rd argument)"}
 
 # Experiment name.
 EXPERIMENT_NAME="FullTriblerNoGui"
@@ -28,7 +28,7 @@ rsync -avz --delete --exclude "$(basename $EXPERIMENT_DIR)" \
 cat > $EXPERIMENT_DIR/$EXPERIMENT_NAME.config << CONFIGFILE
 virtualenv_dir = "/home/$DAS4USER/venv"
 workspace_dir = "$EXPERIMENT_DIR"
-head_nodes = "$DAS4USER@$DAS4FS"
+head_nodes = "$DAS4USER@$DAS4FS",
 
 tracker_cmd = "./run_tracker.sh"
 config_server_cmd = "./run_config_server.sh $PEERCOUNT"
