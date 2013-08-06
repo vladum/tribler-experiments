@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./run_experiment.sh <your_das4_username> <peercount>
+# Usage: ./run_experiment.sh <your_das4_username> <das4_fs> <peercount>
 
 # We need to generate a workspace directory for gumby with the proper scripts,
 # configuration file, and gumby itself. Next, we let gumby do his thing. Edit
@@ -8,7 +8,12 @@
 
 # Script arguments.
 DAS4USER=$1
-PEERCOUNT=$2
+DAS4FS=$2
+PEERCOUNT=$3
+
+${DAS4USER:?"Please give DAS4 username as the 1st argument."}
+${DAS4FS:?"Please give DAS4 front server host as the 2nd argument."}
+${PEERCOUNT:?"How many peers should I start? (3rd argument)"}
 
 # Experiment name.
 EXPERIMENT_NAME="FullTriblerNoGui"
@@ -17,14 +22,13 @@ EXPERIMENT_DIR="`pwd`/$EXPERIMENT_NAME"
 # Create gumby experiment directory.
 mkdir -p $EXPERIMENT_DIR 2>/dev/null
 rsync -avz --delete --exclude "$(basename $EXPERIMENT_DIR)" \
-	--exclude "$(basename $0)" --exclude "\.*" ./ $EXPERIMENT_DIR
+	  --exclude "$(basename $0)" --exclude "\.*" ./ $EXPERIMENT_DIR
 
 # Generate gumby configuration file.
 cat > $EXPERIMENT_DIR/$EXPERIMENT_NAME.config << CONFIGFILE
 virtualenv_dir = "/home/$DAS4USER/venv"
 workspace_dir = "$EXPERIMENT_DIR"
-#head_nodes = "$DAS4USER@fs3.das4.tudelft.nl",
-head_nodes = "$DAS4USER@fs0.das4.cs.vu.nl",
+head_nodes = "$DAS4USER@$DAS4FS"
 
 tracker_cmd = "./run_tracker.sh"
 config_server_cmd = "./run_config_server.sh $PEERCOUNT"
