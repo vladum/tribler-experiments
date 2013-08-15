@@ -27,7 +27,7 @@ def read_environ():
     except KeyError as e:
         print >>stderr, 'Please set', e, 'environment variable.'
         exit(1)
-    
+
 def check_environ():
     # TODO: Check if paths are valid.
     if False:
@@ -62,14 +62,14 @@ def run_campaign(config, scenario):
 def main():
     read_environ()
     check_environ()
-    
+
     print 'P2P Test Framework in:', P2PTESTFRAMEWORK
     print 'libswift in:', SWIFT
     print 'LFS in:', LFS
-    
+
     configdir = make_config_dir()
     print 'Config dir is:', configdir
-    
+
     for s in SCENARIOS:
         gen_config_files(configdir, s)
         run_campaign(configdir, s)
