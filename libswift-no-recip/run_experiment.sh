@@ -15,7 +15,7 @@ PLOTS_LAST_DIR=./plots/last
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-#trap 'kill $(jobs -p) || true; rm -rf $TMP_DIR' EXIT
+trap 'kill $(jobs -p) || true; rm -rf $TMP_DIR' EXIT
 
 # create directories
 rm -rf $TMP_DIR || true
