@@ -15,7 +15,7 @@ PLOTS_LAST_DIR=./plots/last
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-trap 'kill $(jobs -p) || true; rm -rf $TMP_DIR' EXIT
+#trap 'kill $(jobs -p) || true; rm -rf $TMP_DIR' EXIT
 
 # create directories
 rm -rf $TMP_DIR || true
@@ -62,7 +62,7 @@ function start_seeder {
     else
         DBGSTR=""
     fi
-    $DIR/process_guard.py -c "taskset -c 0 $SWIFT --uprate 307200 -e $STORE -l 1337 -c 10000 -z 1024 --progress $DBGSTR" -t $TIME -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
+    $DIR/process_guard.py -c "taskset -c 0 $SWIFT --uprate 30720 -e $STORE -l 1337 -c 10000 -z 1024 --progress $DBGSTR" -t $TIME -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
     PIDS[$1]=$!
     echo "PID: ${PIDS[$1]}"
 }
@@ -81,7 +81,7 @@ function start_leecher {
     else
         DBGSTR=""
     fi
-    $DIR/process_guard.py -c "taskset -c 1 $SWIFT --downrate 307200 -o $STORE -h $2 -t 127.0.0.1:1337 -z 1024 --progress $DBGSTR" -t $(($TIME-1)) -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
+    $DIR/process_guard.py -c "taskset -c 1 $SWIFT --downrate 30720 -o $STORE -h $2 -t 127.0.0.1:1337 -z 1024 --progress $DBGSTR" -t $(($TIME-1)) -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
     PIDS[$1]=$!
     echo "PID: ${PIDS[$1]}"
 }
@@ -99,6 +99,8 @@ echo "Waiting for PIDs: ${PIDS[*]}"
 
 wait ${PIDS[dst]}
 wait ${PIDS[src]}
+
+diff -s $TMP_DIR/peers/src/${HASHES[src]} $TMP_DIR/peers/dst/${HASHES[src]}
 
 $DIR/parse_logs.py $LOGS_DIR/src
 $DIR/parse_logs.py $LOGS_DIR/dst
