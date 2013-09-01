@@ -4,6 +4,7 @@
 [ -z $TIME ] && TIME=30
 [ -z $SWIFT ] && SWIFT=./swift
 [ -z $FILE_SIZE ] && FILE_SIZE=50 # in MiB
+[ -z $DEBUG ] && DEBUG=false
 
 # constants
 TMP_DIR=./tmp
@@ -56,8 +57,14 @@ function start_seeder {
     mkdir -p $LOGS_DIR/$1
     echo "Starting peer $1 (seeder)"
     ls -alh $STORE
-    $DIR/process_guard.py -c "taskset -c 0 $SWIFT -e $STORE -l 1337 -c 10000 -z 1024 --progress --debug" -t $TIME -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
+    if $DEBUG; then
+        DBGSTR="--debug"
+    else
+        DBGSTR=""
+    fi
+    $DIR/process_guard.py -c "taskset -c 0 $SWIFT --uprate 307200 -e $STORE -l 1337 -c 10000 -z 1024 --progress $DBGSTR" -t $TIME -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
     PIDS[$1]=$!
+    echo "PID: ${PIDS[$1]}"
 }
 
 # start_leecher <name> <hash>
@@ -69,16 +76,26 @@ function start_leecher {
     echo "Starting peer $1 (leecher) for hash $2"
     ls -alh $STORE
     sleep 1s
-    $DIR/process_guard.py -c "taskset -c 1 $SWIFT -o $STORE -h $2 -t 127.0.0.1:1337 -z 1024 --progress" -t $(($TIME-1)) -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
+    if $DEBUG; then
+        DBGSTR="--debug"
+    else
+        DBGSTR=""
+    fi
+    $DIR/process_guard.py -c "taskset -c 1 $SWIFT --downrate 307200 -o $STORE -h $2 -t 127.0.0.1:1337 -z 1024 --progress $DBGSTR" -t $(($TIME-1)) -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
     PIDS[$1]=$!
+    echo "PID: ${PIDS[$1]}"
 }
+
+declare -A PIDS
 
 echo "Experiment time: $TIME"
 
 prepare_seeder_files src
 start_seeder src
-sleep 5s
+sleep 10s
 start_leecher dst ${HASHES[src]}
+
+echo "Waiting for PIDs: ${PIDS[*]}"
 
 wait ${PIDS[dst]}
 wait ${PIDS[src]}
