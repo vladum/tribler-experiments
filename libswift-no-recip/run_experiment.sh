@@ -87,7 +87,7 @@ function start_seeder {
     local CPU=${AFNTY[$PEERID % ${#AFNTY[@]}]}
     local UPRATE=$(eval "echo \$UPRATE_$1")
     local DOWNRATE=$(eval "echo \$DOWNRATE_$1")
-    $DIR/process_guard.py -c "taskset -c $CPU operf -d $LOGS_DIR/$1 $SWIFT $UPRATE $DOWNRATE -e $STORE -l 1337 -c 10000 -z 1024 --progress $DBGSTR" -t $2 -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
+    $DIR/process_guard.py -c "taskset -c $CPU $SWIFT $UPRATE $DOWNRATE -e $STORE -l 1337 -c 10000 -z 1024 --progress $DBGSTR" -t $2 -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
     PIDS[$1]=$!
     PEERID=$(($PEERID + 1))
     echo "Peer $PEERID ($1) PID: ${PIDS[$1]} CPU: $CPU"
