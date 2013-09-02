@@ -6,20 +6,41 @@
 [ -z $FILE_SIZE ] && FILE_SIZE=50 # in MiB
 [ -z $DEBUG ] && DEBUG=false
 
+# to run peers on separate cores (affinity) redef these (max 8)
+# TODO: I know this is crappy.. .sorry
+[ -z $AFNTY0 ] && AFNTY0=0
+[ -z $AFNTY1 ] && AFNTY1=0
+[ -z $AFNTY2 ] && AFNTY2=0
+[ -z $AFNTY3 ] && AFNTY3=0
+[ -z $AFNTY4 ] && AFNTY4=0
+[ -z $AFNTY5 ] && AFNTY5=0
+[ -z $AFNTY6 ] && AFNTY6=0
+[ -z $AFNTY7 ] && AFNTY7=0
+AFNTY=($AFNTY0 $AFNTY1 $AFNTY2 $AFNTY3 $AFNTY4 $AFNTY5 $AFNTY6 $AFNTY7)
+
+# ------------------------------------------------------------------------------
+
+echo "Affinity array: ${AFNTY[@]}"
+
 # constants
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 TMP_DIR=./tmp
 DATE=$(date +'%F-%H-%M')
 LOGS_DIR=./logs/$DATE
 PLOTS_DIR=./plots/$DATE
 PLOTS_LAST_DIR=./plots/last
+PEERID=0
+declare -A PIDS
+declare -A UPRATE
+declare -A DWRATE
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-trap 'kill $(jobs -p) || true; rm -rf $TMP_DIR' EXIT
+trap 'kill $(jobs -p) || true; rm -rf $TMP_DIR; killall -9 swift' EXIT
 
 # create directories
 rm -rf $TMP_DIR || true
 mkdir -p $TMP_DIR $LOGS_DIR $PLOTS_DIR $PLOTS_LAST_DIR || true
+
+# ------------------------------------------------------------------------------
 
 # generate_file <size_in_mib> <name>
 function generate_file {
@@ -49,7 +70,7 @@ function prepare_seeder_files {
     echo "Prepared file with hash ${HASHES[$1]} for peer \"$1\""
 }
 
-# start_seeder <name>
+# start_seeder <name> <time>
 function start_seeder {
     local STORE=$TMP_DIR/peers/$1
     local HASH=${HASHES[$1]}
@@ -62,12 +83,17 @@ function start_seeder {
     else
         DBGSTR=""
     fi
-    $DIR/process_guard.py -c "taskset -c 0 $SWIFT --uprate 30720 -e $STORE -l 1337 -c 10000 -z 1024 --progress $DBGSTR" -t $TIME -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
+    # round robin affinity using the optionally supplied array
+    local CPU=${AFNTY[$PEERID % ${#AFNTY[@]}]}
+    local UPRATE=$(eval "echo \$UPRATE_$1")
+    local DOWNRATE=$(eval "echo \$DOWNRATE_$1")
+    $DIR/process_guard.py -c "taskset -c $CPU operf -d $LOGS_DIR/$1 $SWIFT $UPRATE $DOWNRATE -e $STORE -l 1337 -c 10000 -z 1024 --progress $DBGSTR" -t $2 -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
     PIDS[$1]=$!
-    echo "PID: ${PIDS[$1]}"
+    PEERID=$(($PEERID + 1))
+    echo "Peer $PEERID ($1) PID: ${PIDS[$1]} CPU: $CPU"
 }
 
-# start_leecher <name> <hash>
+# start_leecher <name> <hash> <time>
 function start_leecher {
     local STORE=$TMP_DIR/peers/$1
     
@@ -75,40 +101,60 @@ function start_leecher {
     mkdir -p $LOGS_DIR/$1
     echo "Starting peer $1 (leecher) for hash $2"
     ls -alh $STORE
-    sleep 1s
     if $DEBUG; then
         DBGSTR="--debug"
     else
         DBGSTR=""
     fi
-    $DIR/process_guard.py -c "taskset -c 1 $SWIFT --downrate 30720 -o $STORE -h $2 -t 127.0.0.1:1337 -z 1024 --progress $DBGSTR" -t $(($TIME-1)) -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
+    # round robin affinity using the optionally supplied array
+    local CPU=${AFNTY[$PEERID % ${#AFNTY[@]}]}
+    local UPRATE=$(eval "echo \$UPRATE_$1")
+    local DOWNRATE=$(eval "echo \$DOWNRATE_$1")
+    $DIR/process_guard.py -c "taskset -c $CPU $SWIFT $UPRATE $DOWNRATE -o $STORE -h $2 -t 127.0.0.1:1337 -z 1024 --progress $DBGSTR" -t $3 -m $LOGS_DIR/$1 -o $LOGS_DIR/$1 &
     PIDS[$1]=$!
-    echo "PID: ${PIDS[$1]}"
+    PEERID=$(($PEERID + 1))
+    echo "Peer $PEERID ($1) PID: ${PIDS[$1]} CPU: $CPU"
 }
 
-declare -A PIDS
+# ------------------------------------------------------------------------------
 
 echo "Experiment time: $TIME"
 
-prepare_seeder_files src
-start_seeder src
-sleep 10s
-start_leecher dst ${HASHES[src]}
+prepare_seeder_files seeder
+#UPRATE_seeder="--uprate 512"
+start_seeder seeder $TIME
+sleep `echo "$TIME*0.1" | bc` # wait 10% of total time
+#DOWNRATE_leecher1="--downrate 256"
+start_leecher leecher1 ${HASHES[seeder]} $(printf "%.0f" $(echo "$TIME-$TIME*0.1" | bc))
+sleep `echo "$TIME*0.1" | bc` # wait 10% of total time
+start_leecher leecher2 ${HASHES[seeder]} $(printf "%.0f" $(echo "$TIME-$TIME*0.2" | bc))
 
 echo "Waiting for PIDs: ${PIDS[*]}"
 
-wait ${PIDS[dst]}
-wait ${PIDS[src]}
+wait ${PIDS[leecher1]}
+wait ${PIDS[leecher2]}
+wait ${PIDS[seeder]}
 
-diff -s $TMP_DIR/peers/src/${HASHES[src]} $TMP_DIR/peers/dst/${HASHES[src]}
+diff -s $TMP_DIR/peers/seeder/${HASHES[seeder]} $TMP_DIR/peers/leecher1/${HASHES[seeder]}
+diff -s $TMP_DIR/peers/seeder/${HASHES[seeder]} $TMP_DIR/peers/leecher2/${HASHES[seeder]}
 
-$DIR/parse_logs.py $LOGS_DIR/src
-$DIR/parse_logs.py $LOGS_DIR/dst
+# ------------------------------------------------------------------------------
 
-gnuplot -e "logdir='$LOGS_DIR/src';peername='src';plotsdir='$PLOTS_DIR'" $DIR/resource_usage.gnuplot
-gnuplot -e "logdir='$LOGS_DIR/dst';peername='dst';plotsdir='$PLOTS_DIR'" $DIR/resource_usage.gnuplot
+for peer in $PIDS; do
+    echo $peer
+done
 
-gnuplot -e "logdir='$LOGS_DIR';plotsdir='$PLOTS_DIR'" $DIR/speed.gnuplot
+$DIR/parse_logs.py $LOGS_DIR/seeder
+$DIR/parse_logs.py $LOGS_DIR/leecher1
+$DIR/parse_logs.py $LOGS_DIR/leecher2
+
+gnuplot -e "logdir='$LOGS_DIR/seeder';peername='seeder';plotsdir='$PLOTS_DIR'" $DIR/resource_usage.gnuplot
+gnuplot -e "logdir='$LOGS_DIR/leecher1';peername='leecher1';plotsdir='$PLOTS_DIR'" $DIR/resource_usage.gnuplot
+gnuplot -e "logdir='$LOGS_DIR/leecher2';peername='leecher2';plotsdir='$PLOTS_DIR'" $DIR/resource_usage.gnuplot
+
+gnuplot -e "peers='leecher1 leecher2';logdir='$LOGS_DIR';plotsdir='$PLOTS_DIR'" $DIR/speed.gnuplot
 
 rm $PLOTS_LAST_DIR/*
 cp $PLOTS_DIR/* $PLOTS_LAST_DIR/
+
+# ------------------------------------------------------------------------------

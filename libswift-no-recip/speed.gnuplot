@@ -1,11 +1,25 @@
-set terminal pngcairo transparent enhanced font "arial,10" fontscale 1.0 rounded size 1000, 800
+H=400.00
+W=1000.00
 
-set output plotsdir . "/speed.png"
+#set terminal pngcairo color enhanced font "arial,10" fontscale 1.0 rounded size W,H
+set terminal svg fname 'Helvetica' fsize 9 rounded size W,H
+set output plotsdir . "/speed.svg"
+
+set linetype  1 lc rgb "dark-violet" lw 1
+set linetype  2 lc rgb "#009e73" lw 1
+set linetype  3 lc rgb "#56b4e9" lw 1
+set linetype  4 lc rgb "#e69f00" lw 1
+set linetype  5 lc rgb "#f0e442" lw 1
+set linetype  6 lc rgb "#0072b2" lw 1
+set linetype  7 lc rgb "#e51e10" lw 1
+set linetype  8 lc rgb "black"   lw 1
+set linetype  9 lc rgb "gray50"  lw 1
+set linetype cycle  9
 
 set tmargin 0
 set bmargin 0
 set lmargin 10
-set rmargin 15
+set rmargin 12
 
 set datafile separator " "
 
@@ -18,36 +32,37 @@ set palette defined (\
     40  '#D71900', \
     50  '#000000')
 set cbtics ("keep alive" 0, "ping pong" 1, "slow start" 2, "aimd" 3, "ledbat" 4, "close" 5)
-set cbtics rotate by 45
-set colorbox user vertical origin 0.8,0.541 size 0.015,0.12
+set colorbox user vertical origin graph 0.9,1.2 size screen 12.0/W, screen 80.0/H
 set cbrange [-0.5:5.5]
 set zrange [0:5]
 set boxwidth 1 relative
-set style fill transparent solid 0.65
+set style fill solid 1 noborder
 
-set multiplot title "Transfer Statistics (src and dst)"
+set multiplot title "Transfer Statistics"
 
-set size 1,0.43
-set origin 0.0,0.53
+set size 1,(290.0/H)
+set origin 0.0,((40.0+30.0)/H)
 
 set ylabel "Speed (MiB/s)"
 set y2label "Hints (B)"
-set logscale y2
+#set logscale y2
 set datafile separator " "
 set key left bottom
 set grid
-set ytics
+set ytics offset 0,0.3
 set y2tics
 
 unset xtics
 
-stats logdir . "/src/speed.parsed" using 2
+stats logdir . "/seeder/speed.parsed" using 2
 set xr [STATS_min - 10:STATS_max + 10]
 
-plot logdir . "/src/speed.parsed" using 2:($4/1024/1024) with lines lw 2 lt 1 axes x1y1 title 'upload speed (src)', \
-	 logdir . "/dst/speed.parsed" using 2:($21/1024/1024) with lines lw 2 lt 2 axes x1y1 title 'dwload speed (dst)', \
-	 logdir . "/dst/speed.parsed" using 2:23 with lines lw 2 lt 3 axes x1y2 title 'hints out (dst)', \
-	 logdir . "/src/speed.parsed" using 2:5 with lines lw 2 lt 4 axes x1y2 title 'hints in (src)'
+pindex(p) = strstrt(peers, p)
+
+plot logdir . "/seeder/speed.parsed" using 2:($4/1024/1024) with lines axes x1y1 title 'upload speed (seeder)', \
+	 logdir . "/seeder/speed.parsed" using 2:5 with lines axes x1y2 title 'hints in (seeder)', \
+     for [p in peers] logdir. "/" . p . "/speed.parsed" using 2:($21/1024/1024) with lines axes x1y1 title "dwload speed (". p . ")", \
+     for [p in peers] logdir. "/" . p . "/speed.parsed" using 2:23 with lines axes x1y2 title "hints out (" . p . ")"
 
 unset title
 unset ylabel
@@ -57,43 +72,20 @@ unset y2label
 unset y2tics
 unset ytics
 
-set yrange [0:1]
+set yrange [0:words(peers)+1]
 
-set size 1,0.04
-set origin 0.0,0.49
+set size 1,(30.0/H)
+set origin 0,(40.0/H)
 
-plot logdir . "/dst/speed.parsed" using 2:(0):24 with boxes lc palette title 'send control (dst)', \
-	 logdir . "/src/speed.parsed" using 2:(1):6 with boxes lc palette title 'send control (src)'
+set ytics ("leecher2" 0.5, "leecher1" 1.5, "seeder" 2.5)
 
-unset colorbox
-
-set size 1,0.04
-set origin 0.0,0.45
 
 set timefmt "%d"
 set format x "%s"
-
-plot logdir . "/dst/speed.parsed" using 2:(1):24 with boxes lc palette title 'send control (dst)', \
-	 logdir . "/src/speed.parsed" using 2:(0):6 with boxes lc palette title 'send control (src)'
-
-set key right top
-set ytics
-set xtics
-set size 1,0.30
-set origin 0.0,0.15
-set yrange [1:*]
-set logscale y
-set ylabel 'Chunks (#)'
-
 set xlabel "Time in experiment (s)"
 
-set style fill solid 0.5 border -1
-set boxwidth 0.8 relative
-
-plot logdir . "/dst/speed.parsed" using 2:($25+$26+$27+$28) with boxes t "-data", \
-     '' using 2:($26+$27+$28) w boxes t "!data (sz mis)", \
-     '' using 2:($27+$28) w boxes t "!data (dup)", \
-     '' using 2:28 w boxes t "!data (bug TODO)"
+plot logdir . "/seeder/speed.parsed" using 2:(words(peers)+1):6 with boxes lc palette title 'send control (seeder)', \
+     for [p = 1:words(peers)] logdir . "/" . word(peers,p) . "/speed.parsed" using 2:(words(peers)-p+1):24 with boxes lc palette title "send control (" . word(peers,p) . ")"
 
 unset multiplot
 
