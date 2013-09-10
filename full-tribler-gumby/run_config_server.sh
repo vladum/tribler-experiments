@@ -2,7 +2,7 @@
 
 PEERCOUNT=$1
 
-echo "$0: Starting config server..."
+echo "$0: Starting config server... CWD: $PWD"
 
 # wait for tracker
 
@@ -12,4 +12,4 @@ echo "$0: Starting config server..."
 # TODO: User logger.conf.cfgsrv in config_server.py
 # TODO: Better way to run config_serverZ
 export PYTHONPATH=gumby/scripts
-python -c "from config_server import main; main()" $PEERCOUNT 5 > ./output/config_server.log 2>&1
+python -u -c "from config_server import main; main()" $PEERCOUNT 5 1>./output/config_server.out 2>./output/config_server.err
