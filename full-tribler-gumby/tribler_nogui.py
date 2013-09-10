@@ -9,6 +9,7 @@ import logging.config
 from subprocess import call
 from traceback import print_exc
 from collections import OrderedDict
+from logging import FileHandler
 
 # TODO: Use abs.
 TRIBLERPATH = os.path.join(
@@ -283,12 +284,37 @@ PATTERNS = OrderedDict(sorted({
     "209715200-ff" : "c0c50c6c588f082b665b64c56ae7a6a53798a91d"
 }.items()))
 
+class StreamToLogger(object):
+    """
+    Redirects writes to logger.
+
+    Buffering to support print "foo", "bar" statements.
+    """
+    def __init__(self, logger, log_level=logging.INFO):
+        self.logger = logger
+        self.log_level = log_level
+        self.buf = ""
+ 
+    def write(self, s):
+        i = 0
+        p = s.find("\n")
+        while p != -1:
+            if i == 0:
+                msg = self.buf
+                self.buf = ""
+            msg += s[i:p]
+            self.logger.log(self.log_level, msg)
+            i = p + 1
+            p = s[i:].find("\n")
+        if i == 0:
+            self.buf += s
+
 def download_state_callback(peerid, ds):
     """
     Logs download progress while the experiment if running.
     """
     d = ds.get_download()
-    print >> sys.stderr, '%s %s %s %5.2f%% %s up %8.2fKB/s down %8.2fKB/s' % \
+    print >> sys.stdout, '%s %s %s %5.2f%% %s up %8.2fKB/s down %8.2fKB/s' % \
         (peerid,
         d.get_def().get_name(),
         dlstatus_strings[ds.get_status()],
@@ -328,6 +354,7 @@ class TriblerNoGui:
 
         self.sscfg = SessionStartupConfig()
         self.sscfg.set_state_dir(self.statedir)
+        self.sscfg.set_torrent_collecting_dir(self.filesdir)
         self.sscfg.set_swift_path(
             os.path.join(TRIBLERPATH, 'Tribler', 'SwiftEngine', 'swift')
         )
@@ -348,6 +375,25 @@ class TriblerNoGui:
         return "%s:%s" % (endpoint["ip"], endpoint["port"])
 
     def start(self):
+        # send stdout and stderr to log files
+        # TODO(vladum): This should move to logger.node.conf.
+        try:
+            logsdir = os.environ["TRIBLER_LOGSDIR"]
+            logout = os.path.join(logsdir, "triblernogui.out." + self.peerid)
+            logerr = os.path.join(logsdir, "triblernogui.err." + self.peerid)
+
+            logger = logging.getLogger("STDOUT")
+            logger.propagate = False
+            logger.addHandler(FileHandler(logout, "w"))
+            sys.stdout = StreamToLogger(logger)
+
+            logger = logging.getLogger("STDERR")
+            logger.propagate = False
+            logger.addHandler(FileHandler(logerr, "w"))
+            sys.stderr = StreamToLogger(logger, logging.ERROR)
+        except KeyError:
+            pass
+
         self.s = Session(self.sscfg)
         self.s.start()
 
@@ -374,7 +420,7 @@ class TriblerNoGui:
     def generate_file(self):
         (sizepattern, roothash) = PATTERNS.items()[int(self.peerid)]
         size, pattern = sizepattern.split("-")
-        filename = os.path.join(self.filesdir, "file_" + roothash)
+        filename = os.path.join(self.filesdir, roothash)
         generate_file(
             int(size),
             pattern.decode("hex"),
