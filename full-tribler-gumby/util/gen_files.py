@@ -40,7 +40,7 @@ def generate_file(size, pattern, tmpfile=TMPFILE):
 
     cmd = "dd if=/dev/zero bs=" + str(bs) + " count=" + str(count) + " | " + \
           "tr '" + zeros + "' '" + pattern + "' > " + tmpfile
-    print "Running command:", cmd
+    print "Running command: " + cmd
 
     check_call(cmd, shell=True)
 
