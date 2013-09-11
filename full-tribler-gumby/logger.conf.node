@@ -2,7 +2,7 @@
 keys=root,dispersy,dispersystats,bartercommunity,dispersydetailedstats
 
 [handlers]
-keys=debugging,default
+keys=debugging,default,dispersy
 
 [formatters]
 keys=debugging,default
@@ -13,7 +13,7 @@ handlers=default
 
 [logger_dispersy]
 level=CRITICAL
-handlers=default
+handlers=dispersy
 qualname=Tribler.dispersy
 
 [logger_dispersystats]
@@ -28,7 +28,7 @@ qualname=dispersy-stats-detailed-candidates
 
 [logger_bartercommunity]
 level=CRITICAL
-handlers=default
+handlers=dispersy
 qualname=Tribler.community.bartercast3
 
 [handler_default]
@@ -36,6 +36,13 @@ class=StreamHandler
 level=NOTSET
 formatter=debugging
 args=(sys.stderr,)
+
+[handler_dispersy]
+class=FileHandler
+level=NOTSET
+formatter=debugging
+propagate=False
+args=(os.path.join(os.environ['PROJECTROOT'], 'output', 'dispersy.' + open('/etc/HOSTNAME').readline()[:-1]),)
 
 [formatter_default]
 format=%(asctime)s %(levelname)s %(message)s

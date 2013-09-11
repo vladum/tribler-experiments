@@ -10,17 +10,16 @@ print "Logger using configuration file: " + logger_conf
 logging.config.fileConfig(logger_conf)
 logger = logging.getLogger(__name__)
 
+# Tribler should be in PYTHONPATH
+from Tribler.dispersy.tool.tracker import TrackerDispersy, setup_dispersy
+from Tribler.dispersy.tool.mainthreadcallback import MainThreadCallback
+from Tribler.dispersy.endpoint import StandaloneEndpoint
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Runs a Dispersy tracker.')
-    parser.add_argument("-t", "--tribler", metavar="PATH", required=True, help='tribler root dir')    
     parser.add_argument("--ip", metavar="IP")
     parser.add_argument("--port", type=int, default=6421, metavar="PORT")
     args = parser.parse_args()
-
-    sys.path += [args.tribler]
-    from Tribler.dispersy.tool.tracker import TrackerDispersy, setup_dispersy
-    from Tribler.dispersy.tool.mainthreadcallback import MainThreadCallback
-    from Tribler.dispersy.endpoint import StandaloneEndpoint
 
     # start Dispersy
     dispersy = TrackerDispersy(MainThreadCallback("Dispersy"), StandaloneEndpoint(args.port, args.ip), u".", False)

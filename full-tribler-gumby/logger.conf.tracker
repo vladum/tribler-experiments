@@ -8,7 +8,7 @@ keys=debugging,default,file
 keys=debugging,default
 
 [logger_root]
-level=NOTSET
+level=DEBUG
 handlers=file
 
 [handler_default]
@@ -31,7 +31,7 @@ args=(sys.stderr,)
 class=FileHandler
 level=NOTSET
 formatter=debugging
-args=('tracker.log', 'a')
+args=('log', 'a')
 
 [formatter_debugging]
 format=%(levelname)-7s %(created).2f %(module)15s:%(lineno)-4d  %(name)s %(message)s

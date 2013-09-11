@@ -350,7 +350,7 @@ class TriblerNoGui:
         self.peerid = id
         self.filesdir = os.path.join(self.rootdir, 'files' + self.peerid)
         os.makedirs(self.filesdir)
-        self.statedir = os.path.join(self.rootdir, 'state' + self.peerid)
+        self.statedir = os.path.join(self.rootdir)
 
         self.sscfg = SessionStartupConfig()
         self.sscfg.set_state_dir(self.statedir)
@@ -400,6 +400,14 @@ class TriblerNoGui:
         # load Dispersy BarterCommunity
         def define_barter_community():
             from Tribler.community.bartercast3.community import BarterCommunity
+
+            # class CustomBarterCommunity(BarterCommunity):
+            #     @classmethod
+            #     def get_master_members(cls, dispersy):
+            #         bc3_master_file = os.path.join(os.environ["PROJECTROOT"], "tmp", "bc3_master")
+            #         with open(bc3_master_file, "r") as f:
+            #             master = f.read().split(" ")[0]
+            #         return [dispersy.get_member(master.decode("hex"))]
 
             if swift_process:
                 dispersy.define_auto_load(BarterCommunity,
